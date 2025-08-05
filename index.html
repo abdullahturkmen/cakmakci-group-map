@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Filtrelenebilir Leaflet Harita</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 20px;
+            z-index: 99999999;
+            left: 20px;
+        }
+
+        select {
+            padding: 6px 10px;
+            font-size: 14px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100dvh;
+        }
+
+        .custom-marker {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ccc;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .custom-marker img {
+            width: 26px;
+            height: 26px;
+            object-fit: contain;
+            border-radius: 50%;
+        }
+
+        /* Popup içerik tasarımı */
+        .popup-content {
+            font-family: Arial, sans-serif;
+            width: 220px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .popup-header img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+        }
+
+        .popup-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .popup-type {
+            color: #777;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .popup-phone {
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .popup-directions {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 5px 10px;
+            background: #0078ff;
+            color: white !important;
+            text-decoration: none;
+            font-size: 13px;
+            border-radius: 4px;
+        }
+
+        .popup-directions:hover {
+            background: #005fcc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="controls">
+        <select id="typeFilter">
+            <option value="all">Tüm Firma Tipleri</option>
+        </select>
+        <select id="firmSelector">
+            <option value="">Firma Seçin</option>
+        </select>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const locations = [
+            { name: "OnsMaster", type: "Kripto", phone: "+90 555 111 2233", lat: 40.993773487659006, lng: 29.11872524969884, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/4.png" },
+            { name: "Hakan Altın", type: "Kuyumcu", phone: "+90 212 333 4455", lat: 41.010261, lng: 28.972146, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/6.png" },
+            { name: "Çakmakçı Döviz", type: "Döviz", phone: "+90 216 444 5566", lat: 40.924336, lng: 29.131685, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/5.png" },
+            { name: "Rauf Denktaş Üniversitesi", type: "Üniversite", phone: "+90 392 888 9900", lat: 35.1782146, lng: 33.3624368, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/13.png" },
+            { name: "Hakan Döviz", type: "Döviz", phone: "+90 216 333 7788", lat: 40.9799927, lng: 29.1103281, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/7.png" },
+            { name: "As Kuyumculuk", type: "Kuyumcu", phone: "+90 212 555 8899", lat: 40.9799667, lng: 29.1080646, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/2.png" },
+            { name: "DNA İstanbul Döviz", type: "Döviz", phone: "+90 212 666 7788", lat: 41.010258, lng: 28.972142, icon: "http://cgdemo.omgteknoloji.com/assets/img/firma/sirket-bunyesi-firma/8.png" },
+        ];
+
+        const map = L.map('map').setView([41.0082, 28.9784], 13);
+
+        L.tileLayer('https://{s}.tile.thunderforest.com/neighbourhood/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap Katkıda Bulunanlar'
+        }).addTo(map);
+
+        const markerGroup = L.layerGroup().addTo(map);
+
+        function createMarker(loc) {
+            const icon = L.divIcon({
+                html: `<div class="custom-marker"><img src="${loc.icon}" alt="${loc.name}"></div>`,
+                className: "",
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
+            });
+
+            const popupHTML = `
+                <div class="popup-content">
+                    <div class="popup-header">
+                        <img src="${loc.icon}" alt="${loc.name}">
+                        <div>
+                            <div class="popup-name">${loc.name}</div>
+                            <div class="popup-type">${loc.type}</div>
+                        </div>
+                    </div>
+                    <div class="popup-phone">📞 ${loc.phone || "Bilgi yok"}</div>
+                    <a class="popup-directions" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}">📍 Yol Tarifi</a>
+                </div>
+            `;
+
+            return L.marker([loc.lat, loc.lng], { icon }).bindPopup(popupHTML);
+        }
+
+        function renderMarkers(filterType = "all") {
+            markerGroup.clearLayers();
+            const filtered = filterType === "all" ? locations : locations.filter(l => l.type === filterType);
+            filtered.forEach(loc => markerGroup.addLayer(createMarker(loc)));
+
+            if (filtered.length > 0) {
+                const bounds = L.latLngBounds(filtered.map(loc => [loc.lat, loc.lng]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        const typeSet = new Set(locations.map(loc => loc.type));
+        const typeFilter = document.getElementById("typeFilter");
+        typeSet.forEach(type => {
+            const opt = document.createElement("option");
+            opt.value = type;
+            opt.textContent = type;
+            typeFilter.appendChild(opt);
+        });
+
+        const firmSelector = document.getElementById("firmSelector");
+        locations.forEach(loc => {
+            const opt = document.createElement("option");
+            opt.value = loc.name;
+            opt.textContent = loc.name;
+            firmSelector.appendChild(opt);
+        });
+
+        typeFilter.addEventListener("change", e => {
+            firmSelector.value = "";
+            renderMarkers(e.target.value);
+        });
+
+        firmSelector.addEventListener("change", e => {
+            typeFilter.value = "all";
+            const selected = locations.find(loc => loc.name === e.target.value);
+            if (selected) {
+                map.setView([selected.lat, selected.lng], 16);
+                const m = createMarker(selected).addTo(map);
+                m.openPopup();
+            }
+        });
+
+        renderMarkers();
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                map.setView([lat, lng], 14);
+                L.marker([lat, lng]).addTo(map).bindPopup("📍 Şu an buradasınız").openPopup();
+            });
+        }
+    </script>
+</body>
+
+</html>
